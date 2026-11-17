@@ -112,3 +112,7 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# Talking Avatar: la API key de Anthropic nunca se sube al repo
+Assets/TalkingAvatar/Resources/AnthropicApiKey.txt
+Assets/TalkingAvatar/Resources/AnthropicApiKey.txt.meta
