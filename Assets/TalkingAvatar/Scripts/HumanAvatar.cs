@@ -4,10 +4,10 @@ namespace TalkingAvatar
 {
     /// <summary>
     /// Humano estilizado construido con primitivas (unos 1,65 m, pies en y = 0, mirando a +Z).
-    /// Anima respiración, parpadeo, mirada hacia <see cref="LookTarget"/>, saludo con la mano,
+    /// Anima respiración, parpadeo, mirada hacia <see cref="AvatarBody.LookTarget"/>, saludo con la mano,
     /// boca y gestos al hablar, y una pose de "pensando".
     /// </summary>
-    public class HumanAvatar : MonoBehaviour
+    public class HumanAvatar : AvatarBody
     {
         [Header("Colores")]
         public Color skinColor = new Color(0.87f, 0.67f, 0.53f);
@@ -18,26 +18,13 @@ namespace TalkingAvatar
         public Color irisColor = new Color(0.14f, 0.10f, 0.07f);
         public Color lipColor = new Color(0.55f, 0.22f, 0.22f);
 
-        public bool IsTalking { get; set; }
-        public bool IsThinking { get; set; }
-        public Transform LookTarget { get; set; }
-
-        /// <summary>
-        /// Posición local (respecto al avatar) donde va la burbuja: sobre la cabeza, desplazada hacia el lado
-        /// izquierdo del avatar para que la mano derecha no la tape al saludar.
-        /// </summary>
-        public static readonly Vector3 BubbleAnchor = new Vector3(-0.2f, 2.02f, 0f);
-
-        /// <summary>
-        /// Desplazamiento horizontal (en metros, en el plano de la burbuja vista desde la cámara) de la cola,
-        /// para que apunte a la cabeza. Negativo = hacia la izquierda de la pantalla.
-        /// </summary>
-        public const float BubbleTailOffset = -0.17f;
+        // Sobre la cabeza, desplazada hacia el lado izquierdo del avatar para que la mano derecha no la tape al saludar.
+        public override Vector3 BubbleAnchor => new Vector3(-0.2f, 2.02f, 0f);
+        public override float BubbleTailOffset => -0.17f;
 
         Transform m_Body, m_Head, m_LeftShoulder, m_RightShoulder, m_LeftElbow, m_RightElbow;
         Transform m_LeftEye, m_RightEye, m_Mouth, m_LeftBrow, m_RightBrow;
         Vector3 m_MouthScale, m_LeftBrowPos, m_RightBrowPos, m_BodyPos;
-        Material m_BaseMaterial;
         bool m_Built;
 
         Quaternion m_HeadRotation = Quaternion.identity;
@@ -49,17 +36,15 @@ namespace TalkingAvatar
         const float WaveDuration = 2.4f;
         const float BlinkDuration = 0.14f;
 
-        void Awake() => Build();
+        public override void Greet() => m_WaveTime = 0f;
 
-        public void Wave() => m_WaveTime = 0f;
-
-        public void PlayAppear()
+        public override void PlayAppear()
         {
             m_Appear = 0f;
             transform.localScale = Vector3.one * 0.001f;
         }
 
-        public void Build()
+        public override void Build()
         {
             if (m_Built)
                 return;
@@ -114,17 +99,19 @@ namespace TalkingAvatar
             ApplyPose(0f, 0f, 0f);
         }
 
-        /// <summary>Fija una pose estática (para capturas fuera de Play Mode).</summary>
-        public void PoseForPreview(bool waving, float mouthOpen)
+        public override void PoseForPreview(bool greeting, float mouthOpen)
         {
             Build();
             m_MouthOpen = mouthOpen;
             m_Expression = 1f;
-            ApplyPose(waving ? 1f : 0f, waving ? 0.6f : 0f, 0f);
+            ApplyPose(greeting ? 1f : 0f, greeting ? 0.6f : 0f, 0f);
         }
 
         void Update()
         {
+            if (!m_Built)
+                return;
+
             var dt = Time.deltaTime;
             var t = Time.time;
 
@@ -140,8 +127,7 @@ namespace TalkingAvatar
             m_Body.localRotation = Quaternion.Euler(0f, 0f, 1.2f * Mathf.Sin(t * 0.6f));
 
             // Mirada.
-            var tilt = IsThinking ? 12f : 0f;
-            var target = Quaternion.Euler(IsThinking ? -10f : 0f, IsThinking ? 15f : 0f, tilt);
+            var target = Quaternion.Euler(IsThinking ? -10f : 0f, IsThinking ? 15f : 0f, IsThinking ? 12f : 0f);
             if (LookTarget != null && !IsThinking)
             {
                 var local = m_Body.InverseTransformDirection(LookTarget.position - m_Head.position);
@@ -149,7 +135,7 @@ namespace TalkingAvatar
                 var pitch = Mathf.Clamp(-Mathf.Atan2(local.y, new Vector2(local.x, local.z).magnitude) * Mathf.Rad2Deg, -25f, 25f);
                 target = Quaternion.Euler(pitch, yaw, 0f);
             }
-            m_HeadRotation = Quaternion.Slerp(m_HeadRotation, target, 1f - Mathf.Exp(-6f * dt));
+            m_HeadRotation = Quaternion.Slerp(m_HeadRotation, target, Smooth(6f, dt));
             m_Head.localRotation = m_HeadRotation;
 
             // Parpadeo.
@@ -171,7 +157,7 @@ namespace TalkingAvatar
 
             // Boca, cejas y gestos.
             var mouthTarget = IsTalking ? 0.2f + 0.8f * Mathf.PerlinNoise(t * 9f, 0.3f) : 0f;
-            m_MouthOpen = Mathf.Lerp(m_MouthOpen, mouthTarget, 1f - Mathf.Exp(-18f * dt));
+            m_MouthOpen = Mathf.Lerp(m_MouthOpen, mouthTarget, Smooth(18f, dt));
             var expressive = IsTalking || m_WaveTime >= 0f;
             m_Expression = Mathf.MoveTowards(m_Expression, expressive ? 1f : 0f, dt * 3f);
             m_Gesture = Mathf.MoveTowards(m_Gesture, IsTalking ? 1f : 0f, dt * 2f);
@@ -238,67 +224,6 @@ namespace TalkingAvatar
             Part(PrimitiveType.Sphere, "White", eye, Vector3.zero, new Vector3(0.042f, 0.042f, 0.03f), white);
             Part(PrimitiveType.Sphere, "Iris", eye, new Vector3(0f, 0f, 0.013f), new Vector3(0.024f, 0.026f, 0.012f), iris);
             return eye;
-        }
-
-        static Transform Pivot(string name, Transform parent, Vector3 localPosition)
-        {
-            var pivot = new GameObject(name).transform;
-            pivot.SetParent(parent, false);
-            pivot.localPosition = localPosition;
-            return pivot;
-        }
-
-        static Transform Part(PrimitiveType type, string name, Transform parent, Vector3 localPosition, Vector3 scale,
-            Material material, Vector3 euler = default)
-        {
-            var go = GameObject.CreatePrimitive(type);
-            go.name = name;
-            DestroySafe(go.GetComponent<Collider>());
-            var t = go.transform;
-            t.SetParent(parent, false);
-            t.localPosition = localPosition;
-            t.localEulerAngles = euler;
-            t.localScale = scale;
-            go.GetComponent<Renderer>().sharedMaterial = material;
-            return t;
-        }
-
-        Material MakeMaterial(Color color, float smoothness)
-        {
-            if (m_BaseMaterial == null)
-            {
-                // El material por defecto de una primitiva es el Lit del pipeline activo (URP aquí),
-                // así no dependemos de Shader.Find, que puede fallar si el shader se excluye del build.
-                var probe = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                m_BaseMaterial = probe.GetComponent<Renderer>().sharedMaterial;
-                DestroySafe(probe);
-            }
-
-            var material = new Material(m_BaseMaterial) { name = "Avatar " + ColorUtility.ToHtmlStringRGB(color) };
-            if (material.HasProperty("_BaseColor"))
-                material.SetColor("_BaseColor", color);
-            if (material.HasProperty("_Color"))
-                material.SetColor("_Color", color);
-            if (material.HasProperty("_Smoothness"))
-                material.SetFloat("_Smoothness", smoothness);
-            return material;
-        }
-
-        static void DestroySafe(Object obj)
-        {
-            if (obj == null)
-                return;
-            if (Application.isPlaying)
-                Destroy(obj);
-            else
-                DestroyImmediate(obj);
-        }
-
-        static float EaseOutBack(float x)
-        {
-            const float c1 = 1.70158f;
-            const float c3 = c1 + 1f;
-            return 1f + c3 * Mathf.Pow(x - 1f, 3f) + c1 * Mathf.Pow(x - 1f, 2f);
         }
     }
 }

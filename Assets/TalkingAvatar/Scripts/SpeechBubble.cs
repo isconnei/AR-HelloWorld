@@ -24,24 +24,31 @@ namespace TalkingAvatar
         bool m_Thinking;
         float m_RevealStart;
 
-        public static SpeechBubble Create(Transform parent, Vector3 localPosition)
+        /// <summary>Crea la burbuja colocada sobre un avatar, con su tamaño y cola.</summary>
+        public static SpeechBubble Create(AvatarBody avatar) =>
+            Create(avatar.transform, avatar.BubbleAnchor, avatar.BubbleScale, avatar.BubbleTailOffset);
+
+        /// <param name="scale">1 = unos 0,7 m de ancho.</param>
+        /// <param name="tailOffset">Desplazamiento horizontal de la cola en metros (negativo = izquierda).</param>
+        public static SpeechBubble Create(Transform parent, Vector3 localPosition, float scale = 1f, float tailOffset = 0f)
         {
             var go = new GameObject("Speech Bubble", typeof(RectTransform));
             go.transform.SetParent(parent, false);
             go.transform.localPosition = localPosition;
             var bubble = go.AddComponent<SpeechBubble>();
-            bubble.Build();
+            bubble.Build(scale, tailOffset);
             return bubble;
         }
 
-        void Build()
+        void Build(float scale, float tailOffset)
         {
             var canvas = gameObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.WorldSpace;
             var root = (RectTransform)transform;
             root.sizeDelta = new Vector2(Width, 10f);
             root.pivot = new Vector2(0.5f, 0f);
-            root.localScale = Vector3.one * PixelSize;
+            var metersPerPixel = PixelSize * Mathf.Max(0.01f, scale);
+            root.localScale = Vector3.one * metersPerPixel;
             m_Group = gameObject.AddComponent<CanvasGroup>();
 
             var fill = new Color(1f, 1f, 1f, 0.94f);
@@ -51,7 +58,7 @@ namespace TalkingAvatar
             var tailRect = (RectTransform)tail.transform;
             tailRect.anchorMin = tailRect.anchorMax = new Vector2(0.5f, 0f);
             tailRect.sizeDelta = new Vector2(34f, 34f);
-            tailRect.anchoredPosition = new Vector2(HumanAvatar.BubbleTailOffset / PixelSize, 0f);
+            tailRect.anchoredPosition = new Vector2(tailOffset / metersPerPixel, 0f);
             tailRect.localRotation = Quaternion.Euler(0f, 0f, 45f);
             tail.AddComponent<Image>().color = fill;
 

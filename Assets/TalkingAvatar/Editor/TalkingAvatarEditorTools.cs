@@ -46,36 +46,55 @@ namespace TalkingAvatar.EditorTools
                 CapturePreview(path);
         }
 
-        /// <summary>Para línea de comandos: -executeMethod TalkingAvatar.EditorTools.TalkingAvatarEditorTools.CapturePreviewBatch -previewOut ruta.png</summary>
+        /// <summary>
+        /// Para línea de comandos: -executeMethod TalkingAvatar.EditorTools.TalkingAvatarEditorTools.CapturePreviewBatch
+        /// -previewOut ruta.png [-previewKind Kingfisher|Human]
+        /// </summary>
         public static void CapturePreviewBatch()
         {
             EnsureSettingsAsset();
             var args = Environment.GetCommandLineArgs();
             var output = "AvatarPreview.png";
+            AvatarKind? kind = null;
             for (var i = 0; i < args.Length - 1; i++)
             {
                 if (args[i] == "-previewOut")
                     output = args[i + 1];
+                else if (args[i] == "-previewKind" && Enum.TryParse(args[i + 1], true, out AvatarKind parsed))
+                    kind = parsed;
             }
-            CapturePreview(output);
+            CapturePreview(output, kind);
         }
 
-        static void CapturePreview(string outputPath)
+        static void CapturePreview(string outputPath, AvatarKind? kind = null)
         {
             EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
-            var settings = AvatarChatSettings.Load();
 
-            var avatar = new GameObject(settings.avatarName).AddComponent<HumanAvatar>();
-            avatar.PoseForPreview(waving: true, mouthOpen: 0.6f);
-            var bubble = SpeechBubble.Create(avatar.transform, HumanAvatar.BubbleAnchor);
-            bubble.SayInstant($"¡Hola! Soy {settings.avatarName}. Qué gusto conocerte. ¿Cómo te llamas?");
+            // Copia de los ajustes para poder elegir otro avatar sin modificar el asset.
+            var settings = UnityEngine.Object.Instantiate(AvatarChatSettings.Load());
+            if (kind.HasValue)
+                settings.avatarKind = kind.Value;
+
+            var avatar = TalkingAvatarController.CreateAvatar(settings, null);
+            avatar.PoseForPreview(greeting: true, mouthOpen: 0.6f);
+            var bubble = SpeechBubble.Create(avatar);
+            bubble.SayInstant($"¡Hola! Soy {settings.CharacterName}. Qué gusto conocerte. ¿Cómo te llamas?");
+
+            // Encuadre automático: el avatar completo más la burbuja.
+            var bounds = new Bounds(avatar.transform.position + avatar.BubbleAnchor, Vector3.zero);
+            foreach (var r in avatar.GetComponentsInChildren<Renderer>())
+                bounds.Encapsulate(r.bounds);
+            bounds.Encapsulate(avatar.transform.position + avatar.BubbleAnchor + Vector3.up * (0.12f * avatar.BubbleScale));
 
             var cam = Camera.main;
-            cam.transform.position = new Vector3(0.7f, 1.5f, 2.6f);
-            cam.transform.LookAt(new Vector3(0f, 1.3f, 0f));
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.78f, 0.82f, 0.86f);
             cam.fieldOfView = 50f;
+            cam.nearClipPlane = 0.01f;
+            var distance = bounds.extents.magnitude / Mathf.Sin(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * 0.9f;
+            cam.transform.position = bounds.center + new Vector3(0.3f, 0.05f, 1f).normalized * distance;
+            cam.transform.LookAt(bounds.center);
+
             bubble.FaceCamera(cam);
             Canvas.ForceUpdateCanvases();
             LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)bubble.transform);

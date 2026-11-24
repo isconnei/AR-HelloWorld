@@ -6,8 +6,9 @@ using UnityEngine.XR.ARSubsystems;
 namespace TalkingAvatar
 {
     /// <summary>
-    /// Se crea solo al cargar la escena AR: coloca el avatar sobre el suelo detectado delante de la cámara,
-    /// lo hace saludar y conversar por iniciativa propia, y conecta la barra de chat con Claude.
+    /// Se crea solo al cargar la escena AR: crea el avatar elegido en los ajustes (martín pescador o humano),
+    /// lo coloca delante de la cámara (posado en el aire o sobre el suelo detectado), lo hace saludar y
+    /// conversar por iniciativa propia, y conecta la barra de chat con Claude.
     /// </summary>
     public class TalkingAvatarController : MonoBehaviour
     {
@@ -18,18 +19,23 @@ namespace TalkingAvatar
         const string IdleEvent =
             "[Evento: La persona lleva un rato sin decir nada. Retoma la conversación con algo breve y amable.]";
 
+        // Segundos mínimos de rastreo AR antes de posar a un avatar flotante, para que la cámara tenga su pose real.
+        const float FloatingSettleTime = 1f;
+
         AvatarChatSettings m_Settings;
         ClaudeChatClient m_Client;
-        HumanAvatar m_Avatar;
+        AvatarBody m_Avatar;
         SpeechBubble m_Bubble;
         ChatInputUI m_UI;
         ARPlaneManager m_PlaneManager;
 
         bool m_Placed;
-        bool m_PlacedOnFloor;
+        bool m_PlacementSettled;
         float m_StartTime;
         float m_LastActivity;
         int m_NudgesInARow;
+
+        float Distance => m_Settings.IsKingfisher ? m_Settings.kingfisherDistance : m_Settings.placementDistance;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -42,25 +48,42 @@ namespace TalkingAvatar
             new GameObject("Talking Avatar").AddComponent<TalkingAvatarController>();
         }
 
+        /// <summary>Crea y construye el avatar indicado en los ajustes (también lo usa la vista previa del Editor).</summary>
+        public static AvatarBody CreateAvatar(AvatarChatSettings settings, Transform parent)
+        {
+            var go = new GameObject(settings.CharacterName);
+            go.transform.SetParent(parent, false);
+
+            AvatarBody avatar;
+            if (settings.IsKingfisher)
+            {
+                var kingfisher = go.AddComponent<KingfisherAvatar>();
+                kingfisher.Size = settings.kingfisherSize;
+                avatar = kingfisher;
+            }
+            else
+            {
+                avatar = go.AddComponent<HumanAvatar>();
+            }
+
+            avatar.Build();
+            return avatar;
+        }
+
         void Start()
         {
             m_Settings = AvatarChatSettings.Load();
             m_Client = new ClaudeChatClient(m_Settings, AvatarChatSettings.LoadApiKey());
             m_PlaneManager = FindAnyObjectByType<ARPlaneManager>();
 
-            m_Avatar = new GameObject(m_Settings.avatarName).AddComponent<HumanAvatar>();
-            m_Avatar.transform.SetParent(transform, false);
-            m_Bubble = SpeechBubble.Create(m_Avatar.transform, HumanAvatar.BubbleAnchor);
+            m_Avatar = CreateAvatar(m_Settings, transform);
+            m_Bubble = SpeechBubble.Create(m_Avatar);
             m_Avatar.gameObject.SetActive(false);
 
-            m_UI = ChatInputUI.Create(m_Settings.avatarName);
+            m_UI = ChatInputUI.Create(m_Settings.CharacterName);
             m_UI.transform.SetParent(transform, false);
             m_UI.Submitted += OnUserMessage;
-            m_UI.CallAvatarPressed += () =>
-            {
-                if (m_Placed)
-                    PlaceInFront(m_Avatar.transform.position.y);
-            };
+            m_UI.CallAvatarPressed += OnCallAvatar;
             m_UI.Typing += () => m_LastActivity = Time.time;
 
             if (!m_Client.HasApiKey)
@@ -76,7 +99,7 @@ namespace TalkingAvatar
             if (cam == null)
                 return;
 
-            if (!m_Placed || !m_PlacedOnFloor)
+            if (!m_PlacementSettled)
                 TryPlace(cam);
             if (!m_Placed)
                 return;
@@ -99,6 +122,21 @@ namespace TalkingAvatar
 
         void TryPlace(Camera cam)
         {
+            var waited = Time.time - m_StartTime;
+
+            if (!m_Avatar.PlacesOnFloor)
+            {
+                // Posado en el aire: basta con que AR esté rastreando la cámara.
+                var tracking = ARSession.state == ARSessionState.SessionTracking;
+                if ((tracking && waited > FloatingSettleTime) || waited > m_Settings.placementTimeout)
+                {
+                    PlaceInFront(FloatingHeight(cam));
+                    OnFirstPlaced();
+                    m_PlacementSettled = true;
+                }
+                return;
+            }
+
             if (TryFindFloor(cam, out var floorY))
             {
                 if (!m_Placed)
@@ -112,15 +150,17 @@ namespace TalkingAvatar
                     var p = m_Avatar.transform.position;
                     m_Avatar.transform.position = new Vector3(p.x, floorY, p.z);
                 }
-                m_PlacedOnFloor = true;
+                m_PlacementSettled = true;
             }
-            else if (!m_Placed && Time.time - m_StartTime > m_Settings.placementTimeout)
+            else if (!m_Placed && waited > m_Settings.placementTimeout)
             {
                 // Sin suelo detectado: altura típica con el móvil en la mano.
                 PlaceInFront(cam.transform.position.y - 1.45f);
                 OnFirstPlaced();
             }
         }
+
+        float FloatingHeight(Camera cam) => cam.transform.position.y - m_Settings.kingfisherHeightBelowCamera;
 
         bool TryFindFloor(Camera cam, out float floorY)
         {
@@ -144,7 +184,16 @@ namespace TalkingAvatar
             return found;
         }
 
-        void PlaceInFront(float floorY)
+        void OnCallAvatar()
+        {
+            if (!m_Placed)
+                return;
+            var cam = Camera.main;
+            var y = !m_Avatar.PlacesOnFloor && cam != null ? FloatingHeight(cam) : m_Avatar.transform.position.y;
+            PlaceInFront(y);
+        }
+
+        void PlaceInFront(float height)
         {
             var cam = Camera.main;
             if (cam == null)
@@ -154,8 +203,8 @@ namespace TalkingAvatar
                 forward = Vector3.ProjectOnPlane(cam.transform.up, Vector3.up);
             forward.Normalize();
 
-            var position = cam.transform.position + forward * m_Settings.placementDistance;
-            position.y = floorY;
+            var position = cam.transform.position + forward * Distance;
+            position.y = height;
             m_Avatar.transform.SetPositionAndRotation(position, Quaternion.LookRotation(-forward, Vector3.up));
             if (m_Placed)
                 m_Avatar.PlayAppear();
@@ -166,13 +215,13 @@ namespace TalkingAvatar
             m_Placed = true;
             m_Avatar.gameObject.SetActive(true);
             m_Avatar.PlayAppear();
-            m_Avatar.Wave();
+            m_Avatar.Greet();
             m_LastActivity = Time.time;
 
             if (m_Client.HasApiKey)
                 Ask(GreetingEvent);
             else
-                m_Bubble.Say($"¡Hola! Soy {m_Settings.avatarName}. Para poder conversar contigo necesito una API key de " +
+                m_Bubble.Say($"¡Hola! Soy {m_Settings.CharacterName}. Para poder conversar contigo necesito una API key de " +
                              "Anthropic en Assets/TalkingAvatar/Resources/AnthropicApiKey.txt.");
         }
 
@@ -186,7 +235,7 @@ namespace TalkingAvatar
                 return;
             }
             if (Random.value < 0.25f)
-                m_Avatar.Wave();
+                m_Avatar.Greet();
             Ask(text);
         }
 
