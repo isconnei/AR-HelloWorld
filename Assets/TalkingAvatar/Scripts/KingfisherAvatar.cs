@@ -79,19 +79,21 @@ namespace TalkingAvatar
                 return;
             m_Built = true;
 
-            var back = MakeMaterial(backColor, 0.55f);
-            var wing = MakeMaterial(wingColor, 0.5f);
-            var crown = MakeMaterial(crownColor, 0.5f);
-            var tail = MakeMaterial(tailColor, 0.5f);
+            // Plumaje con texturas generadas por código (los colores de cada textura salen de los campos de arriba).
+            var back = MakeMaterial(Color.white, 0.7f, FeatherTextures.Shimmer(Darken(backColor, 0.75f), Lighten(backColor, 0.25f), 1));
+            // Alas: vetas a lo largo, como plumas de vuelo; las motas claras son esferas aparte.
+            var wing = MakeMaterial(Color.white, 0.55f, FeatherTextures.Streaked(wingColor, Lighten(wingColor, 0.35f), 9f, 0.8f, 2));
+            var crown = MakeMaterial(Color.white, 0.55f, FeatherTextures.Barred(crownColor, Lighten(backColor, 0.15f), 14f, 0.32f, 3));
+            var tail = MakeMaterial(Color.white, 0.6f, FeatherTextures.Streaked(tailColor, backColor, 10f, 0.6f, 4));
             var spots = MakeMaterial(spotColor, 0.5f);
-            var belly = MakeMaterial(bellyColor, 0.3f);
-            var throat = MakeMaterial(throatColor, 0.3f);
+            var belly = MakeMaterial(Color.white, 0.25f, FeatherTextures.Streaked(bellyColor, Darken(bellyColor, 0.7f), 12f, 0.7f, 5));
+            var throat = MakeMaterial(Color.white, 0.25f, FeatherTextures.Streaked(throatColor, Darken(throatColor, 0.88f), 16f, 0.6f, 6));
             var beak = MakeMaterial(beakColor, 0.6f);
             var eye = MakeMaterial(new Color(0.02f, 0.02f, 0.02f), 0.95f);
             var catchlight = MakeMaterial(Color.white, 0.9f);
             var feet = MakeMaterial(feetColor, 0.3f);
-            var bark = MakeMaterial(barkColor, 0.1f);
-            var leaf = MakeMaterial(leafColor, 0.3f);
+            var bark = MakeMaterial(Color.white, 0.1f, FeatherTextures.Bark(Lighten(barkColor, 0.25f), Darken(barkColor, 0.55f), 7));
+            var leaf = MakeMaterial(Color.white, 0.35f, FeatherTextures.Leaf(leafColor, Lighten(leafColor, 0.35f), 8));
 
             // Todo el modelo cuelga de "Model" para poder escalarlo sin tocar la burbuja.
             m_Model = Pivot("Model", transform, Vector3.zero);
@@ -261,6 +263,10 @@ namespace TalkingAvatar
             }
             m_LeftEye.localScale = m_RightEye.localScale = new Vector3(1f, eyeOpen, 1f);
         }
+
+        static Color Darken(Color c, float factor) => new Color(c.r * factor, c.g * factor, c.b * factor, 1f);
+
+        static Color Lighten(Color c, float amount) => Color.Lerp(c, Color.white, amount);
 
         Transform Wing(string side, float sign, Material feathers, Material spots)
         {

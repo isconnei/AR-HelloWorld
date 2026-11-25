@@ -17,7 +17,94 @@ namespace TalkingAvatar.EditorTools
         const string ResourcesFolder = "Assets/TalkingAvatar/Resources";
         const string SettingsPath = ResourcesFolder + "/" + AvatarChatSettings.ResourcePath + ".asset";
 
-        static TalkingAvatarEditorTools() => EditorApplication.delayCall += () => EnsureSettingsAsset();
+        const string BaseMaterialPath = ResourcesFolder + "/" + AvatarBody.BaseMaterialResourcePath + ".mat";
+        const string ScenePath = "Assets/Scenes/SampleScene.unity";
+
+        // Objetos de la plantilla Mobile AR para crear/mover/borrar figuras 3D, y su interfaz.
+        static readonly string[] k_TemplateObjects =
+        {
+            "UI",
+            "XR Origin (AR Rig)/Camera Offset/Object Spawner",
+            "XR Origin (AR Rig)/Camera Offset/Screen Space Ray Interactor",
+        };
+
+        static TalkingAvatarEditorTools() => EditorApplication.delayCall += () =>
+        {
+            EnsureSettingsAsset();
+            EnsureBaseMaterial();
+        };
+
+        /// <summary>
+        /// Material URP Lit guardado en Resources. Hace falta en el build del móvil: allí el material por defecto
+        /// de las primitivas no es de URP y se vería magenta.
+        /// </summary>
+        static Material EnsureBaseMaterial()
+        {
+            var material = AssetDatabase.LoadAssetAtPath<Material>(BaseMaterialPath);
+            if (material != null)
+                return material;
+            var shader = Shader.Find("Universal Render Pipeline/Lit");
+            if (shader == null)
+            {
+                Debug.LogError("[TalkingAvatar] No se encontró el shader 'Universal Render Pipeline/Lit'.");
+                return null;
+            }
+            Directory.CreateDirectory(ResourcesFolder);
+            material = new Material(shader) { name = AvatarBody.BaseMaterialResourcePath };
+            AssetDatabase.CreateAsset(material, BaseMaterialPath);
+            AssetDatabase.SaveAssets();
+            return material;
+        }
+
+        [MenuItem("Tools/Talking Avatar/Quitar funciones de figuras 3D de la plantilla")]
+        static void RemoveTemplateFeaturesMenu()
+        {
+            if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+                RemoveTemplateFeatures();
+        }
+
+        /// <summary>Para línea de comandos: -executeMethod TalkingAvatar.EditorTools.TalkingAvatarEditorTools.SetupProjectBatch</summary>
+        public static void SetupProjectBatch()
+        {
+            EnsureSettingsAsset();
+            EnsureBaseMaterial();
+            RemoveTemplateFeatures();
+        }
+
+        static void RemoveTemplateFeatures()
+        {
+            var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+            var removed = 0;
+            foreach (var path in k_TemplateObjects)
+            {
+                var go = FindByPath(scene, path);
+                if (go == null)
+                    continue;
+                UnityEngine.Object.DestroyImmediate(go);
+                removed++;
+                Debug.Log($"[TalkingAvatar] Quitado de la escena: {path}");
+            }
+            if (removed > 0)
+                EditorSceneManager.SaveScene(scene);
+            else
+                Debug.Log("[TalkingAvatar] No quedaba nada de la plantilla por quitar.");
+        }
+
+        static GameObject FindByPath(UnityEngine.SceneManagement.Scene scene, string path)
+        {
+            var parts = path.Split('/');
+            foreach (var root in scene.GetRootGameObjects())
+            {
+                if (root.name != parts[0])
+                    continue;
+                var t = root.transform;
+                for (var i = 1; i < parts.Length && t != null; i++)
+                    t = t.Find(parts[i]);
+                if (t != null)
+                    return t.gameObject;
+            }
+            return null;
+        }
 
         static AvatarChatSettings EnsureSettingsAsset()
         {

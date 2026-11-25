@@ -9,6 +9,9 @@ namespace TalkingAvatar
     /// </summary>
     public abstract class AvatarBody : MonoBehaviour
     {
+        /// <summary>Material URP Lit en Resources (lo crea el Editor). Garantiza que el shader entra en el build.</summary>
+        public const string BaseMaterialResourcePath = "AvatarBaseMaterial";
+
         public bool IsTalking { get; set; }
         public bool IsThinking { get; set; }
         public Transform LookTarget { get; set; }
@@ -63,15 +66,22 @@ namespace TalkingAvatar
             return t;
         }
 
-        protected Material MakeMaterial(Color color, float smoothness)
+        /// <param name="texture">Textura opcional; el color la tiñe (usa blanco para verla tal cual).</param>
+        protected Material MakeMaterial(Color color, float smoothness, Texture2D texture = null)
         {
             if (m_BaseMaterial == null)
             {
-                // El material por defecto de una primitiva es el Lit del pipeline activo (URP aquí),
-                // así no dependemos de Shader.Find, que puede fallar si el shader se excluye del build.
-                var probe = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                m_BaseMaterial = probe.GetComponent<Renderer>().sharedMaterial;
-                DestroySafe(probe);
+                // Material URP guardado en el proyecto: en el móvil, el material por defecto de las primitivas
+                // usa un shader que URP no soporta y se ve magenta.
+                m_BaseMaterial = Resources.Load<Material>(BaseMaterialResourcePath);
+                if (m_BaseMaterial == null)
+                {
+                    Debug.LogWarning($"[TalkingAvatar] Falta Resources/{BaseMaterialResourcePath}.mat; " +
+                                     "uso el material por defecto (en el móvil puede verse magenta).");
+                    var probe = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    m_BaseMaterial = probe.GetComponent<Renderer>().sharedMaterial;
+                    DestroySafe(probe);
+                }
             }
 
             var material = new Material(m_BaseMaterial) { name = "Avatar " + ColorUtility.ToHtmlStringRGB(color) };
@@ -81,6 +91,13 @@ namespace TalkingAvatar
                 material.SetColor("_Color", color);
             if (material.HasProperty("_Smoothness"))
                 material.SetFloat("_Smoothness", smoothness);
+            if (texture != null)
+            {
+                if (material.HasProperty("_BaseMap"))
+                    material.SetTexture("_BaseMap", texture);
+                if (material.HasProperty("_MainTex"))
+                    material.SetTexture("_MainTex", texture);
+            }
             return material;
         }
 
