@@ -10,12 +10,12 @@ import { ArScene } from './scene';
 const params = new URLSearchParams(window.location.search);
 const ar = new ArScene(document.getElementById('scene') as HTMLCanvasElement);
 
-const bird = new ProceduralKingfisher(config.size);
+const bird = new ProceduralKingfisher(config.size ?? 1.5);
 bird.talking = params.get('talk') === '1';
 bird.thinking = params.get('think') === '1';
 ar.scene.add(bird.root);
 
-const follower = new FlightFollower(bird, ar.camera, { distance: config.distance, smoothTime: config.lag, heightOffset: -0.06 });
+const follower = new FlightFollower(bird, ar.camera, { distance: config.distance ?? 0.85, smoothTime: config.lag, heightOffset: -0.06 });
 const still = params.get('still') === '1';
 if (!still) {
   follower.arrive(1);

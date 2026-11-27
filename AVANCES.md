@@ -11,8 +11,8 @@
 |---|---|---|
 | 1 | Esqueleto: Vite + TS + three.js, HTTPS local, pantalla de inicio con permisos, cámara de fondo | **Hecho y probado** en iPhone SE (Safari): cámara a pantalla completa, 3 permisos ok, 60 FPS |
 | 2 | Orientación: cubo de prueba fijo en el mundo con el giroscopio | **Hecho y probado** en iPhone SE: el cubo se queda en su sitio |
-| 3 | Pájaro procedural + seguimiento en vuelo | Hecho, **pendiente de probar en el iPhone** (visto en la vista previa de escritorio) |
-| 4 | Geocerca con JSON de instancia y modo debug | Pendiente |
+| 3 | Pájaro procedural + seguimiento en vuelo | **Hecho y probado** en iPhone SE |
+| 4 | Geocerca con JSON de instancia y modo debug | Hecho, **pendiente de probar en el iPhone** (lógica probada con lecturas simuladas) |
 | 5 | Chat con guion (sin IA) | Pendiente |
 | 6 | Proxy en Azure Functions + Claude, con guion de respaldo | Pendiente |
 | 7 | PWA, despliegue en Azure Static Web Apps y QR | Pendiente |
@@ -24,6 +24,25 @@
 - `src/scene.ts`: renderer three.js transparente, cámara virtual con FOV configurable, luz hemisférica + direccional, sin sombras, densidad de píxeles limitada a 2× y bucle de animación con contador de FPS.
 - `src/config.ts`: parámetros de URL: `?debug=1` (panel de estado), `?fov=63` (FOV vertical de la cámara virtual), `?i=<instancia>` (para el paso 4).
 - Línea de privacidad en la pantalla de inicio. La ubicación solo se lee en el teléfono.
+
+## Paso 4 — qué hay
+- `public/instances/parque-el-bosque.json`: lugar, puntos de geocerca, avatar, personalidad (para el paso 6) y guion (saludo, despedida, preguntas frecuentes y respuestas de relleno, para el paso 5). **Las coordenadas del punto son provisionales** (centro de Valdivia): hay que poner las del punto real del parque.
+- `src/instance.ts`: carga y valida la instancia elegida con `?i=<id>` (se descarga mientras se lee la pantalla de inicio). Si no existe, muestra un mensaje amable.
+- `src/geofence.ts`: `watchPosition` + distancia con haversine al punto más cercano. Para que el GPS no haga aparecer y desaparecer al pájaro en el borde:
+  - **Entrar:** distancia ≤ radio + mín(precisión/2, 15 m).
+  - **Salir:** distancia > radio + 15 m, con precisión de ±60 m o mejor, durante 8 s seguidos.
+- Llegada: el pájaro llega volando desde un lado y saluda. Despedida: aletazo y se aleja volando hacia un lado y hacia arriba; a los 2,6 s desaparece.
+- Mientras estás fuera, un aviso abajo dice dónde está el pájaro y cuánto falta ("Te faltan unos 230 m para llegar"); sin GPS, "Buscando tu ubicación…".
+- La ubicación solo se usa en el teléfono: no se envía a ningún sitio.
+- Modo `?debug=1`: el panel muestra el punto, la distancia, la precisión y el estado de la geocerca. Botones nuevos: **Simular dentro** (alterna), **Fijar punto aquí** (guarda tu posición actual como punto de prueba con radio de 30 m, **solo en este teléfono**, sin escribir coordenadas en el repo) y **Quitar punto** (vuelve a los puntos de la instancia). También se puede pasar un punto por URL: `?lat=…&lon=…&r=…`.
+
+## Cómo probar (paso 4)
+1. Recarga `https://<IP-del-Mac>:5173/?debug=1` en el iPhone y toca "Comenzar".
+2. Como el punto provisional está lejos, el pájaro **no** aparece y abajo se ve "Martín está en Parque Urbano El Bosque · Te faltan unos … para llegar".
+3. **Simular dentro** → llega volando; volver a tocarlo → se despide y se va.
+4. En casa, toca **Fijar punto aquí** (la página se recarga): el pájaro aparece porque estás en el centro del punto.
+5. Aléjate caminando: a unos 45 m del punto (más 8 s) se despide; al volver, a unos 30–45 m según la precisión, vuelve a llegar.
+6. Al terminar, **Quitar punto**.
 
 ## Paso 3 — qué hay
 - `src/avatar/AvatarBody.ts`: base común de los avatares (`root`, `talking`, `thinking`, `greet()`, `update()`, `dispose()`), igual que en Unity. El seguimiento mueve `root`; el avatar anima su cuerpo dentro.
@@ -62,6 +81,7 @@
 5. Debe verse la cámara trasera a pantalla completa y, arriba a la izquierda, el panel de debug con FPS, permisos y precisión del GPS.
 
 ## Problemas abiertos
+- **Coordenadas reales del punto del parque**: el JSON tiene unas provisionales. Isaías debe conseguir la ubicación del punto (o puntos) con el comité del parque.
 - Observación de la prueba: el GPS dio ±54 m en interiores. La geocerca por defecto es de 30 m, así que en el paso 4 habrá que tener en cuenta la precisión (por ejemplo, no despedir al pájaro mientras la precisión sea peor que el radio).
 
 ## Historial
@@ -71,3 +91,5 @@
 - 2026-11-27 · Isaías: paso 2 probado en iPhone SE — todo funciona.
 - 2026-11-27 · Claude Code: el código se sube a la rama `feature/webar` de `isconnei/AR-HelloWorld`.
 - 2026-11-27 · Claude Code: paso 3 (martín pescador procedural en vuelo cernido y seguimiento en arco), probado en la vista previa de escritorio.
+- 2026-11-27 · Isaías: paso 3 probado en iPhone SE — OK.
+- 2026-11-27 · Claude Code: paso 4 (JSON de instancia, geocerca con histéresis, llegada y despedida, aviso de distancia, herramientas de debug).

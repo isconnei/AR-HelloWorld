@@ -145,6 +145,38 @@ button:disabled {
   display: none !important;
 }
 
+#notice {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: max(24px, calc(env(safe-area-inset-bottom) + 12px));
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(251, 250, 246, 0.94);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+  text-align: center;
+  line-height: 1.35;
+}
+
+#notice strong {
+  color: var(--forest);
+  font-size: 1.05rem;
+}
+
+#notice span {
+  font-size: 0.92rem;
+  color: #3d4a54;
+}
+
+/* Con los botones de debug abajo, el aviso sube. */
+body.debug #notice {
+  bottom: 120px;
+}
+
 #debug-actions {
   position: fixed;
   left: 8px;
@@ -152,11 +184,12 @@ button:disabled {
   bottom: max(12px, env(safe-area-inset-bottom));
   z-index: 20;
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 #debug-actions button {
-  flex: 1;
+  flex: 1 1 30%;
   padding: 10px 4px;
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.6);

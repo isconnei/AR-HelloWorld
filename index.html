@@ -50,7 +50,15 @@
       <button type="button" data-action="greet">Saludar</button>
       <button type="button" data-action="talk">Hablar</button>
       <button type="button" data-action="think">Pensar</button>
-      <button type="button" data-action="arrive">Llegar</button>
+      <button type="button" data-action="simulate">Simular dentro</button>
+      <button type="button" data-action="pin">Fijar punto aquí</button>
+      <button type="button" data-action="unpin">Quitar punto</button>
+    </div>
+
+    <!-- Aviso cuando el pájaro no está: buscando GPS o lejos del punto -->
+    <div id="notice" class="hidden" role="status" aria-live="polite">
+      <strong id="notice-title"></strong>
+      <span id="notice-detail"></span>
     </div>
 
     <script type="module" src="/src/main.ts"></script>

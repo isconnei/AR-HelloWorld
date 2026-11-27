@@ -32,6 +32,9 @@ export class FlightFollower {
   private roll = 0;
   private effort = 0;
   private initialized = false;
+  /** Si no es null, se está despidiendo: vuela hacia este ángulo, lejos y hacia arriba. */
+  private leaving: { yaw: number; startTime: number } | null = null;
+  private time = 0;
 
   private readonly forward = new THREE.Vector3();
   private readonly direction = new THREE.Vector3();
@@ -56,11 +59,23 @@ export class FlightFollower {
     this.pitch = Math.min(MAX_PITCH, pitch + 15 * DEG);
     this.distance = 2.6;
     this.yawVelocity.v = this.pitchVelocity.v = this.distanceVelocity.v = 0;
+    this.leaving = null;
     this.initialized = true;
+  }
+
+  /** Despedida: se aleja volando hacia un lado y hacia arriba. Tras ~2,5 s ya está lejos. */
+  leave(toSide = 1): void {
+    this.leaving = { yaw: this.yaw + toSide * 75 * DEG, startTime: this.time };
+  }
+
+  /** Segundos desde que empezó a despedirse (null si no se está despidiendo). */
+  get leavingFor(): number | null {
+    return this.leaving ? this.time - this.leaving.startTime : null;
   }
 
   update(dt: number, time: number): void {
     if (dt <= 0) return;
+    this.time = time;
     const target = this.cameraAngles();
     if (!this.initialized) {
       this.yaw = target.yaw;
@@ -68,10 +83,16 @@ export class FlightFollower {
       this.initialized = true;
     }
 
+    // Al despedirse: rumbo fijo hacia un lado, más lejos y más alto.
+    const leaving = this.leaving;
+    const targetYaw = leaving ? leaving.yaw : target.yaw;
+    const targetPitch = leaving ? MAX_PITCH : target.pitch;
+    const targetDistance = leaving ? 4 : this.options.distance;
+
     const { smoothTime } = this.options;
-    this.yaw = smoothDampAngle(this.yaw, target.yaw, this.yawVelocity, smoothTime, dt);
-    this.pitch = smoothDamp(this.pitch, target.pitch, this.pitchVelocity, smoothTime, dt);
-    this.distance = smoothDamp(this.distance, this.options.distance, this.distanceVelocity, smoothTime * 1.6, dt);
+    this.yaw = smoothDampAngle(this.yaw, targetYaw, this.yawVelocity, smoothTime * (leaving ? 2 : 1), dt);
+    this.pitch = smoothDamp(this.pitch, targetPitch, this.pitchVelocity, smoothTime * (leaving ? 2 : 1), dt);
+    this.distance = smoothDamp(this.distance, targetDistance, this.distanceVelocity, smoothTime * (leaving ? 1.2 : 1.6), dt);
 
     // Trayectoria curva: cuanto más rápido rodea al usuario, más sube.
     const angularSpeed = Math.abs(this.yawVelocity.v) + Math.abs(this.pitchVelocity.v);
