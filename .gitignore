@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+.env
+.env.*
+
+# Copia de la app Unity que la sesión de Claude Code trajo a esta carpeta (ya está en GitHub, rama feature/talking-avatar)
+AR-HelloWorld/
