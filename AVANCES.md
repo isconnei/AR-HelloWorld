@@ -10,8 +10,8 @@
 | Paso | Qué | Estado |
 |---|---|---|
 | 1 | Esqueleto: Vite + TS + three.js, HTTPS local, pantalla de inicio con permisos, cámara de fondo | **Hecho y probado** en iPhone SE (Safari): cámara a pantalla completa, 3 permisos ok, 60 FPS |
-| 2 | Orientación: cubo de prueba fijo en el mundo con el giroscopio | Hecho, **pendiente de probar en el iPhone** |
-| 3 | Pájaro procedural + seguimiento en vuelo | Pendiente |
+| 2 | Orientación: cubo de prueba fijo en el mundo con el giroscopio | **Hecho y probado** en iPhone SE: el cubo se queda en su sitio |
+| 3 | Pájaro procedural + seguimiento en vuelo | Hecho, **pendiente de probar en el iPhone** (visto en la vista previa de escritorio) |
 | 4 | Geocerca con JSON de instancia y modo debug | Pendiente |
 | 5 | Chat con guion (sin IA) | Pendiente |
 | 6 | Proxy en Azure Functions + Claude, con guion de respaldo | Pendiente |
@@ -24,6 +24,23 @@
 - `src/scene.ts`: renderer three.js transparente, cámara virtual con FOV configurable, luz hemisférica + direccional, sin sombras, densidad de píxeles limitada a 2× y bucle de animación con contador de FPS.
 - `src/config.ts`: parámetros de URL: `?debug=1` (panel de estado), `?fov=63` (FOV vertical de la cámara virtual), `?i=<instancia>` (para el paso 4).
 - Línea de privacidad en la pantalla de inicio. La ubicación solo se lee en el teléfono.
+
+## Paso 3 — qué hay
+- `src/avatar/AvatarBody.ts`: base común de los avatares (`root`, `talking`, `thinking`, `greet()`, `update()`, `dispose()`), igual que en Unity. El seguimiento mueve `root`; el avatar anima su cuerpo dentro.
+- `src/avatar/ProceduralKingfisher.ts`: port de `KingfisherAvatar.cs` en pose de **vuelo cernido** (cuerpo inclinado 25°, alas extendidas, patas recogidas, cola abierta). Animaciones: aleteo continuo (7 aletazos/s, hasta 11 cuando te persigue o saluda), el cuerpo sube con cada aletazo, vaivén lento, parpadeo, vistazos, te mira de lado con un ojo alternando, pico al hablar con cabeceo, aleteo fuerte al saludar y cabeza ladeada al pensar.
+- `src/avatar/featherTextures.ts`: texturas en `<canvas>` (barrado, vetas, brillo), port de `FeatherTextures.cs`.
+- `src/flight.ts` (`FlightFollower`): el objetivo es un punto delante de la cámara (inclinación limitada a ±35°). Se suavizan por separado el ángulo alrededor del usuario, la altura y la distancia con un resorte críticamente amortiguado (port de `SmoothDamp`), así vuela **en arco a tu alrededor** (no te atraviesa en un giro de 180°), sube hasta 18 cm mientras te alcanza y se ladea hacia la curva. Siempre mira al usuario. Al empezar llega volando desde un lado y saluda.
+- Parámetros de URL para ajustar en terreno: `?dist=0.85` (m), `?size=1.5` (× tamaño real), `?lag=0.45` (s de retraso), `?test=1` (vuelve a mostrar los objetos del paso 2).
+- Con `?debug=1` hay botones abajo: **Saludar**, **Hablar** (alterna), **Pensar** (alterna) y **Llegar** (repite la llegada).
+- Vista previa en el escritorio, sin cámara ni permisos: `npm run preview:avatar` y abrir `http://localhost:5174/preview.html` (la cámara gira sola; `?still=1`, `?talk=1`, `?think=1`).
+
+## Cómo probar (paso 3)
+1. Con `npm run dev` corriendo, recarga en Safari del iPhone `https://<IP-del-Mac>:5173/?debug=1` y toca "Comenzar".
+2. El martín pescador llega volando desde un lado, saluda aleteando fuerte y se queda flotando delante, a unos 85 cm, aleteando.
+3. Gira el teléfono a un lado: el pájaro tarda medio segundo, vuela en arco subiendo un poco, inclinado hacia la curva, y vuelve a ponerse delante.
+4. Date media vuelta rápido: debe rodearte por arriba, no pasar a través.
+5. Prueba los botones Saludar, Hablar y Pensar.
+6. Mira los FPS en el panel: la meta es 30 o más.
 
 ## Paso 2 — qué hay
 - `src/orientation.ts` (`DeviceOrientationTracker`): convierte `alpha`, `beta` y `gamma` en un cuaternión con la misma fórmula del antiguo `DeviceOrientationControls` de three.js (Euler `YXZ` + giro de −90° en X + compensación del ángulo de pantalla) y lo suaviza con `slerp` amortiguado (`smoothing = 18`) para quitar el temblor sin añadir retraso visible.
@@ -51,3 +68,6 @@
 - 2026-11-27 · Claude Code: repo creado; paso 1 (esqueleto, HTTPS local, permisos, cámara de fondo).
 - 2026-11-27 · Isaías: paso 1 probado en iPhone SE — cámara a pantalla completa, permisos ok, 60 FPS, vídeo 720×1280, GPS ±54 m en interiores.
 - 2026-11-27 · Claude Code: paso 2 (orientación con el giroscopio, cubo y cuadrícula de prueba).
+- 2026-11-27 · Isaías: paso 2 probado en iPhone SE — todo funciona.
+- 2026-11-27 · Claude Code: el código se sube a la rama `feature/webar` de `isconnei/AR-HelloWorld`.
+- 2026-11-27 · Claude Code: paso 3 (martín pescador procedural en vuelo cernido y seguimiento en arco), probado en la vista previa de escritorio.

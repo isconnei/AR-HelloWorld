@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es-CL">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vista previa del avatar</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: linear-gradient(#a9c6cf, #6f8f78);
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+      }
+      #info {
+        position: fixed;
+        left: 10px;
+        top: 10px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.55);
+        color: #fff;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="scene"></canvas>
+    <div id="info">Vista previa (escritorio). ?still=1 cámara quieta · ?talk=1 hablando · ?think=1 pensando</div>
+    <script type="module" src="/src/preview.ts"></script>
+  </body>
+</html>

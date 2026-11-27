@@ -145,6 +145,29 @@ button:disabled {
   display: none !important;
 }
 
+#debug-actions {
+  position: fixed;
+  left: 8px;
+  right: 8px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 20;
+  display: flex;
+  gap: 8px;
+}
+
+#debug-actions button {
+  flex: 1;
+  padding: 10px 4px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+#debug-actions button.active {
+  background: var(--orange);
+}
+
 #debug {
   position: fixed;
   left: 8px;

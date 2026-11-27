@@ -1,5 +1,7 @@
 import './style.css';
+import { ProceduralKingfisher } from './avatar/ProceduralKingfisher';
 import { config } from './config';
+import { FlightFollower } from './flight';
 import { DeviceOrientationTracker } from './orientation';
 import { ArScene } from './scene';
 import { OrientationTestObjects } from './testObjects';
@@ -77,20 +79,75 @@ function startAr(): void {
   const ar = new ArScene(canvas);
   arScene = ar;
 
-  // Paso 2: la cámara virtual gira con el teléfono; el cubo de prueba se queda fijo en el mundo.
+  // La cámara virtual gira con el teléfono.
   orientation.start();
-  const testObjects = new OrientationTestObjects(ar.scene);
-  ar.onFrame((dt) => {
-    orientation.apply(ar.camera, dt);
-    if (orientation.hasData) testObjects.placeOnce(ar.camera);
-    testObjects.update(dt);
+  ar.onFrame((dt) => orientation.apply(ar.camera, dt));
+
+  // Objetos de prueba del paso 2 (solo con ?test=1).
+  if (config.test) {
+    const testObjects = new OrientationTestObjects(ar.scene);
+    ar.onFrame((dt) => {
+      if (orientation.hasData) testObjects.placeOnce(ar.camera);
+      testObjects.update(dt);
+    });
+  }
+
+  // Paso 3: el martín pescador llega volando y te sigue.
+  const bird = new ProceduralKingfisher(config.size);
+  bird.root.visible = false;
+  ar.scene.add(bird.root);
+  const follower = new FlightFollower(bird, ar.camera, {
+    distance: config.distance,
+    smoothTime: config.lag,
+    heightOffset: -0.06,
+  });
+  let arrived = false;
+  const arrive = () => {
+    follower.arrive(Math.random() < 0.5 ? -1 : 1);
+    bird.greet();
+    bird.root.visible = true;
+    arrived = true;
+  };
+  ar.onFrame((dt, time) => {
+    // Esperar a la primera lectura del giroscopio para saber hacia dónde miras.
+    if (!arrived && orientation.hasData) arrive();
+    if (!arrived) return;
+    follower.update(dt, time);
+    bird.update(dt, time, { effort: follower.currentEffort });
   });
 
   ar.start();
   if (config.debug) {
     debugPanel.classList.remove('hidden');
     ar.onFrame(updateDebug);
+    setupDebugActions(bird, arrive);
   }
+}
+
+/** Botones para probar las animaciones sin chat (solo con ?debug=1). */
+function setupDebugActions(bird: ProceduralKingfisher, arrive: () => void): void {
+  const panel = document.getElementById('debug-actions')!;
+  panel.classList.remove('hidden');
+  panel.addEventListener('click', (event) => {
+    const button = (event.target as HTMLElement).closest('button');
+    if (!button) return;
+    switch (button.dataset.action) {
+      case 'greet':
+        bird.greet();
+        break;
+      case 'talk':
+        bird.talking = !bird.talking;
+        button.classList.toggle('active', bird.talking);
+        break;
+      case 'think':
+        bird.thinking = !bird.thinking;
+        button.classList.toggle('active', bird.thinking);
+        break;
+      case 'arrive':
+        arrive();
+        break;
+    }
+  });
 }
 
 let debugTimer = 0;
