@@ -25,6 +25,15 @@
 - `src/config.ts`: parámetros de URL: `?debug=1` (panel de estado), `?fov=63` (FOV vertical de la cámara virtual), `?i=<instancia>` (para el paso 4).
 - Línea de privacidad en la pantalla de inicio. La ubicación solo se lee en el teléfono.
 
+## Publicación de prueba en GitHub Pages
+- Decisión (Isaías, 2026-11-27): publicar la app web en **GitHub Pages** para probar con un link HTTPS real, sin el Mac ni el aviso de certificado. Azure Static Web Apps (brief) queda pendiente para el paso 6/7: Pages solo sirve archivos estáticos, así que el proxy `/api/chat` tendrá que vivir en otro servicio.
+- `.github/workflows/pages.yml`: con cada push a `feature/webar`, GitHub Actions compila (`npm run build -- --base /<repo>/`) y publica `dist/` en `https://isconnei.github.io/AR-HelloWorld/`. También se puede lanzar a mano desde la pestaña Actions ("Run workflow").
+- Requisitos en GitHub (los hace Isaías):
+  1. El repo es privado: GitHub Pages gratis exige repo público (o GitHub Pro). Revisado: el historial de las tres ramas no contiene claves.
+  2. Settings → Pages → Source: **GitHub Actions**.
+  3. Settings → Environments → `github-pages` → Deployment branches: agregar `feature/webar` (por defecto solo deja publicar desde `main`).
+- La página es pública para quien tenga el link. No contiene claves; la ubicación sigue sin salir del teléfono.
+
 ## Paso 4 — qué hay
 - `public/instances/parque-el-bosque.json`: lugar, puntos de geocerca, avatar, personalidad (para el paso 6) y guion (saludo, despedida, preguntas frecuentes y respuestas de relleno, para el paso 5). **Las coordenadas del punto son provisionales** (centro de Valdivia): hay que poner las del punto real del parque.
 - `src/instance.ts`: carga y valida la instancia elegida con `?i=<id>` (se descarga mientras se lee la pantalla de inicio). Si no existe, muestra un mensaje amable.
@@ -93,3 +102,4 @@
 - 2026-11-27 · Claude Code: paso 3 (martín pescador procedural en vuelo cernido y seguimiento en arco), probado en la vista previa de escritorio.
 - 2026-11-27 · Isaías: paso 3 probado en iPhone SE — OK.
 - 2026-11-27 · Claude Code: paso 4 (JSON de instancia, geocerca con histéresis, llegada y despedida, aviso de distancia, herramientas de debug).
+- 2026-11-27 · Claude Code: flujo de GitHub Actions para publicar en GitHub Pages (decisión de Isaías).
