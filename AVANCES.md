@@ -2,6 +2,8 @@
 
 > Documento compartido entre Claude Chat y Claude Code. El brief completo está en `CLAUDE.md`.
 > Al terminar cada sesión: actualizar el estado de los pasos, los problemas abiertos y añadir una línea al **Historial**.
+>
+> Código: rama `feature/webar` de github.com/isconnei/AR-HelloWorld (historial propio, independiente de la app Unity de `main` y `feature/talking-avatar`). Carpeta local en el Mac: `~/avatares-webar`.
 
 ## Estado de los pasos
 
@@ -43,7 +45,6 @@
 5. Debe verse la cámara trasera a pantalla completa y, arriba a la izquierda, el panel de debug con FPS, permisos y precisión del GPS.
 
 ## Problemas abiertos
-- Repo de GitHub pendiente: Isaías crea `isconnei/avatares-webar` (privado, vacío) y se conecta como `origin`.
 - Observación de la prueba: el GPS dio ±54 m en interiores. La geocerca por defecto es de 30 m, así que en el paso 4 habrá que tener en cuenta la precisión (por ejemplo, no despedir al pájaro mientras la precisión sea peor que el radio).
 
 ## Historial
