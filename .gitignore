@@ -7,3 +7,6 @@ dist/
 
 # Copia de la app Unity que la sesión de Claude Code trajo a esta carpeta (ya está en GitHub, rama feature/talking-avatar)
 AR-HelloWorld/
+
+# Configuración local de Claude Code (servidor de vista previa)
+.claude/

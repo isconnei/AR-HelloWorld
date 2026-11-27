@@ -7,7 +7,7 @@
 
 | Paso | Qué | Estado |
 |---|---|---|
-| 1 | Esqueleto: Vite + TS + three.js, HTTPS local, pantalla de inicio con permisos, cámara de fondo | Hecho, **pendiente de probar en el iPhone** |
+| 1 | Esqueleto: Vite + TS + three.js, HTTPS local, pantalla de inicio con permisos, cámara de fondo | **Hecho y probado** en iPhone SE (Safari): cámara a pantalla completa, 3 permisos ok, 60 FPS |
 | 2 | Orientación: cubo de prueba fijo en el mundo con el giroscopio | Pendiente |
 | 3 | Pájaro procedural + seguimiento en vuelo | Pendiente |
 | 4 | Geocerca con JSON de instancia y modo debug | Pendiente |
@@ -31,7 +31,9 @@
 5. Debe verse la cámara trasera a pantalla completa y, arriba a la izquierda, el panel de debug con FPS, permisos y precisión del GPS.
 
 ## Problemas abiertos
-- Ninguno conocido todavía; falta la prueba en el iPhone.
+- Repo de GitHub pendiente: Isaías crea `isconnei/avatares-webar` (privado, vacío) y se conecta como `origin`.
+- Observación de la prueba: el GPS dio ±54 m en interiores. La geocerca por defecto es de 30 m, así que en el paso 4 habrá que tener en cuenta la precisión (por ejemplo, no despedir al pájaro mientras la precisión sea peor que el radio).
 
 ## Historial
 - 2026-11-27 · Claude Code: repo creado; paso 1 (esqueleto, HTTPS local, permisos, cámara de fondo).
+- 2026-11-27 · Isaías: paso 1 probado en iPhone SE — cámara a pantalla completa, permisos ok, 60 FPS, vídeo 720×1280, GPS ±54 m en interiores.
