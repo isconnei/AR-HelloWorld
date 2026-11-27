@@ -1,6 +1,8 @@
 import './style.css';
 import { config } from './config';
+import { DeviceOrientationTracker } from './orientation';
 import { ArScene } from './scene';
+import { OrientationTestObjects } from './testObjects';
 import {
   PermissionError,
   helpFor,
@@ -26,6 +28,7 @@ const status = {
 };
 
 let arScene: ArScene | null = null;
+const orientation = new DeviceOrientationTracker();
 
 startButton.addEventListener('click', onStart);
 retryButton.addEventListener('click', () => window.location.reload());
@@ -71,25 +74,42 @@ async function attachCamera(stream: MediaStream): Promise<void> {
 }
 
 function startAr(): void {
-  arScene = new ArScene(canvas);
-  arScene.start();
+  const ar = new ArScene(canvas);
+  arScene = ar;
+
+  // Paso 2: la cámara virtual gira con el teléfono; el cubo de prueba se queda fijo en el mundo.
+  orientation.start();
+  const testObjects = new OrientationTestObjects(ar.scene);
+  ar.onFrame((dt) => {
+    orientation.apply(ar.camera, dt);
+    if (orientation.hasData) testObjects.placeOnce(ar.camera);
+    testObjects.update(dt);
+  });
+
+  ar.start();
   if (config.debug) {
     debugPanel.classList.remove('hidden');
-    arScene.onFrame(updateDebug);
+    ar.onFrame(updateDebug);
   }
 }
 
 let debugTimer = 0;
+let orientationRate = 0;
 function updateDebug(dt: number): void {
   debugTimer += dt;
-  if (debugTimer < 0.25 || !arScene) return;
+  if (debugTimer < 0.5 || !arScene) return;
+  orientationRate = Math.round(orientation.takeEventCount() / debugTimer);
   debugTimer = 0;
   const track = (video.srcObject as MediaStream | null)?.getVideoTracks()[0];
   const settings = track?.getSettings();
+  const { alpha, beta, gamma } = orientation.raw;
   debugPanel.textContent = [
     `FPS ${arScene.fps}`,
     `Movimiento: ${status.motion} · Cámara: ${status.camera} · Ubicación: ${status.location}`,
     `GPS: ${status.gps}`,
+    orientation.hasData
+      ? `Giroscopio ${orientationRate}/s · α ${alpha.toFixed(0)}° β ${beta.toFixed(0)}° γ ${gamma.toFixed(0)}°`
+      : 'Giroscopio: sin datos todavía',
     `Vídeo ${settings?.width ?? '?'}×${settings?.height ?? '?'} · FOV ${config.fov}°`,
     `Pantalla ${window.innerWidth}×${window.innerHeight} @${window.devicePixelRatio}x`,
   ].join('\n');
